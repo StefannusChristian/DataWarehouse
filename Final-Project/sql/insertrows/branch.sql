@@ -1,0 +1,10 @@
+insert into branch (branch_id, branch_name, location) values (1, 'Wuckert-Braun', 'Sweden');
+insert into branch (branch_id, branch_name, location) values (2, 'Heaney and Sons', 'Indonesia');
+insert into branch (branch_id, branch_name, location) values (3, 'Leffler-Cassin', 'Indonesia');
+insert into branch (branch_id, branch_name, location) values (4, 'Bins and Sons', 'China');
+insert into branch (branch_id, branch_name, location) values (5, 'Witting LLC', 'Indonesia');
+insert into branch (branch_id, branch_name, location) values (6, 'Feest, Tillman and Haley', 'Croatia');
+insert into branch (branch_id, branch_name, location) values (7, 'Mohr and Sons', 'China');
+insert into branch (branch_id, branch_name, location) values (8, 'Rogahn-Kovacek', 'China');
+insert into branch (branch_id, branch_name, location) values (9, 'Windler Group', 'China');
+insert into branch (branch_id, branch_name, location) values (10, 'Gusikowski Group', 'Sweden');
