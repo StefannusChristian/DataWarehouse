@@ -1,40 +1,148 @@
+from db import Database
 import streamlit as st
+from streamlit_option_menu import option_menu
 import matplotlib.pyplot as plt
 from db import Database
 import pandas as pd
 
+class GUI:
+    def __init__(self, database: Database):
+        self.db = database
+        self.set_page_config()
+        self.title_header()
+        self.navbar()
 
-# Page Config
-st.set_page_config(page_title="Gudang Data", page_icon="bar_chart", initial_sidebar_state="auto")
+    # Page Config
+    def set_page_config(self):
+        st.set_page_config(page_title="Gudang Data", page_icon="bar_chart", initial_sidebar_state="auto", layout="wide")
 
-host = "localhost"
-user = "root"
-password = ""
-database = "gd_uas"
-mydb = Database(
-    host=host,
-    user=user,
-    password=password,
-    database=database
-)
+    # TITLE HEADER
+    def title_header(self):
+        st.markdown("<h3 style='text-align: center;'>IBDA4011 - Gudang Data Final Project</h3>", unsafe_allow_html=True)
+        st.markdown(
+            """
+            <div style='display: flex; justify-content: center; align-items: center;'>
+                <div style='text-align:center;'>
+                    <h5>Dominique Huang</h5>
+                    <h5>202000216</h5>
+                </div>
+                <div style='text-align:center;'>
+                    <h5>Stefannus Christian</h5>
+                    <h5>202000138</h5>
+                </div>
+                <div style='text-align:center;'>
+                    <h5>Victor Chendra</h5>
+                    <h5>202000138</h5>
+                </div>
+                <div style='text-align:center;'>
+                    <h5>Wira Yudha</h5>
+                    <h5>202000138</h5>
+                </div style='text-align:center;'>
+            </div>
+            """,
+            unsafe_allow_html=True
+    )
+        st.divider()
 
+    def navbar(self):
+        with st.sidebar:
+            selected_option = option_menu(
+                menu_title=None,
+                options = [
+                    "Quantity (Grain)",
+                    "Total Sales Fact",
+                    "Derived Fact",
+                    "Additive Fact",
+                    "Non Additive Fact",
+                    "Factless Fact",
+                    "Snapshot Fact",
+                    "Accumulation Fact",
+                    "Date Dimension",
+                    "Matrix Bus"
+                ],
+                icons = [
+                    "diamond-fill",
+                    "piggy-bank-fill",
+                    "arrow-right-square-fill",
+                    "plus-square-fill",
+                    "dash-square-fill",
+                    "file-earmark-code-fill",
+                    "camera-reels-fill",
+                    "collection-fill",
+                    "calendar-event-fill",
+                    "table"
+                ],
+                menu_icon="cast",
+                default_index=1,
+            )
 
-# TITLE HEADER
-st.markdown("<h1 style='text-align: center;'>IBDA4011 - Gudang Data</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center;'>1. Dominique Huang - 202000338</h3>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center;'>2. Stefannus Christian - 202000138</h3>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center;'>3. Victor Chendra - 202000338</h3>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center;'>4. Wira Yudha - 202000338</h3>", unsafe_allow_html=True)
-st.divider()
+        if selected_option == "Quantity (Grain)":
+            self.show_quantity_grain_content()
 
+        elif selected_option == "Total Sales Fact":
+            self.show_total_sales_fact_content()
 
+        elif selected_option == "Derived Fact":
+            self.show_derived_fact_content()
 
-st.subheader("No 01. Quantity (Grain) [Poin 1]")
-st.subheader("No 02. Fact 1 per dimension 1, 2 [Poin 2]")
-st.subheader("No 03. Derived Fact 1 per dimension 1, 2 [Poin 4]")
-st.subheader("No 04. Additive fact 2 per dimension 1, 2, and 3 [Poin 7]")
-st.subheader("No 05. Non additive fact per dimension 1 and 2 [Poin 8]")
-st.subheader("No 06. Factless fact per dimension 1 and 2 [Poin 10]")
-st.subheader("No 07. Date dimension table [Poin 11]")
-st.subheader("No 08. Snapshot fact per dimension 1 and 2 [Poin 12]")
-st.subheader("No 09. Accumulation fact per dimension 1 and 2  [Poin 13]")
+        elif selected_option == "Additive Fact":
+            self.show_additive_fact_content()
+
+        elif selected_option == "Non Additive Fact":
+            self.show_non_additive_fact_content()
+
+        elif selected_option == "Factless Fact":
+            self.show_factless_fact_content()
+
+        elif selected_option == "Snapshot Fact":
+            self.show_snapshot_fact_content()
+
+        elif selected_option == "Accumulation Fact":
+            self.show_accumulation_fact_content()
+
+        elif selected_option == "Date Dimension":
+            self.show_date_dimension_content()
+
+        elif selected_option == "Matrix Bus":
+            self.show_matrix_bus_content()
+
+    def show_quantity_grain_content(self):
+        st.header("Quality (Grain)")
+
+    def show_total_sales_fact_content(self):
+        st.header("Total Sales Fact")
+        st.subheader("Total Sales Amount per Branch per Quarter")
+
+        data = self.db.total_sales_amount_fact_per_branch_per_quarter_query()
+
+        df = pd.DataFrame(data, columns=["branch_name", "calendar_quarter", "total_sales_amount"])
+        df["total_sales_amount"] = pd.to_numeric(df["total_sales_amount"])
+
+        selected_branch = st.selectbox("Select Branch", df["branch_name"].unique())
+        filtered_data = df[df["branch_name"] == selected_branch]
+
+        st.line_chart(filtered_data.set_index("calendar_quarter")["total_sales_amount"])
+
+    def show_derived_fact_content(self):
+        st.write("This is the content for Derived Fact")
+
+    def show_additive_fact_content(self):
+        st.write("This is the content for Additive Fact")
+
+    def show_non_additive_fact_content(self):
+        st.write("This is the content for Non Additive Fact")
+
+    def show_factless_fact_content(self):
+        st.write("This is the content for Factless Fact")
+
+    def show_snapshot_fact_content(self):
+        st.write("This is the content for Snapshot Fact")
+
+    def show_accumulation_fact_content(self):
+        st.write("This is the content for Accumulation Fact")
+
+    def show_date_dimension_content(self):
+        st.write("This is the content for Date Dimension")
+
+    def show_matrix_bus_content(self):
+        st.write("This is the content for Matrix Bus")
