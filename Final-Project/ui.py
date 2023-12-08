@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from db import Database
 import pandas as pd
 
+
 class GUI:
     def __init__(self, database: Database):
         self.db = database
@@ -14,7 +15,7 @@ class GUI:
 
     # Page Config
     def set_page_config(self):
-        st.set_page_config(page_title="Gudang Data", page_icon="bar_chart", initial_sidebar_state="auto", layout="wide")
+        st.set_page_config(page_title="Gudang Data Final Project", page_icon="bar_chart", initial_sidebar_state="auto", layout="wide")
 
     # TITLE HEADER
     def title_header(self):
@@ -32,11 +33,11 @@ class GUI:
                 </div>
                 <div style='text-align:center;'>
                     <h5>Victor Chendra</h5>
-                    <h5>202000138</h5>
+                    <h5>202000338</h5>
                 </div>
                 <div style='text-align:center;'>
                     <h5>Wira Yudha</h5>
-                    <h5>202000138</h5>
+                    <h5>202000536</h5>
                 </div style='text-align:center;'>
             </div>
             """,
@@ -49,6 +50,7 @@ class GUI:
             selected_option = option_menu(
                 menu_title=None,
                 options = [
+                    "Display Data",
                     "Quantity (Grain)",
                     "Total Sales Fact",
                     "Derived Fact",
@@ -73,10 +75,13 @@ class GUI:
                     "table"
                 ],
                 menu_icon="cast",
-                default_index=1,
+                default_index=0,
             )
 
-        if selected_option == "Quantity (Grain)":
+        if selected_option == "Display Data":
+            self.show_tables_content()
+
+        elif selected_option == "Quantity (Grain)":
             self.show_quantity_grain_content()
 
         elif selected_option == "Total Sales Fact":
@@ -106,6 +111,19 @@ class GUI:
         elif selected_option == "Matrix Bus":
             self.show_matrix_bus_content()
 
+
+    def show_tables_content(self):
+        st.header("Display data")
+
+        # p = self.db.get_all_table_names()
+        p = self.db.retrive_all_data_from_all_tables_to_dataframe()["customer"]
+
+        st.dataframe(p)
+        st.text(type(p))
+
+        
+
+
     def show_quantity_grain_content(self):
         st.header("Quality (Grain)")
 
@@ -124,7 +142,19 @@ class GUI:
         st.line_chart(filtered_data.set_index("calendar_quarter")["total_sales_amount"])
 
     def show_derived_fact_content(self):
-        st.write("This is the content for Derived Fact")
+        st.header("Total Profit Fact")
+        st.subheader("Total Profit Amount per Branch per Quarter")
+
+        data = self.db.total_profit_per_branch_per_quarter_year()
+
+        df = pd.DataFrame(data, columns=["branch_name", "calendar_quarter", "total_profit"])
+        df["total_profit"] = pd.to_numeric(df["total_profit"])
+
+        selected_branch = st.selectbox("Select Branch", df["branch_name"].unique())
+        filtered_data = df[df["branch_name"] == selected_branch]
+
+        st.line_chart(filtered_data.set_index("calendar_quarter")["total_profit"])
+        # st.write("This is the content for Derived Fact")
 
     def show_additive_fact_content(self):
         st.write("This is the content for Additive Fact")
@@ -142,7 +172,11 @@ class GUI:
         st.write("This is the content for Accumulation Fact")
 
     def show_date_dimension_content(self):
-        st.write("This is the content for Date Dimension")
+        data = self.db.get_date_dimension()
+
+        df = pd.DataFrame(data, columns=["Date ID", "Date", "Day of Week", "Calendar Month", "Calendar Quarter", "Calendar Year"])
+        
+        st.table(df)
 
     def show_matrix_bus_content(self):
         st.write("This is the content for Matrix Bus")

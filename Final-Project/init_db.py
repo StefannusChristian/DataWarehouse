@@ -1,6 +1,10 @@
-from ui import GUI
 from db import Database
-from init_db import host, user, password, database
+
+
+host = "localhost"
+user = "root"
+password = ""
+database = "gd_uas"
 
 
 if __name__ == "__main__":
@@ -11,7 +15,4 @@ if __name__ == "__main__":
         database=database
     )
 
-    # NOTE:
-    # EXECUTE `init_db.py` ONCE MANUALLY
-
-    gui = GUI(mydatabase)
+    mydatabase.initialize()
