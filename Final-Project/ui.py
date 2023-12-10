@@ -1,14 +1,11 @@
-from db import Database
 import streamlit as st
-from streamlit_option_menu import option_menu
-import matplotlib.pyplot as plt
-from db import Database
 import pandas as pd
-
+from streamlit_option_menu import option_menu
+from service import Service
 
 class GUI:
-    def __init__(self, database: Database):
-        self.db = database
+    def __init__(self, service: Service):
+        self.service = service
         self.set_page_config()
         self.title_header()
         self.navbar()
@@ -121,40 +118,20 @@ class GUI:
         st.dataframe(p)
         st.text(type(p))
 
-        
-
-
     def show_quantity_grain_content(self):
         st.header("Quality (Grain)")
 
     def show_total_sales_fact_content(self):
         st.header("Total Sales Fact")
         st.subheader("Total Sales Amount per Branch per Quarter")
-
-        data = self.db.total_sales_amount_fact_per_branch_per_quarter_query()
-
-        df = pd.DataFrame(data, columns=["branch_name", "calendar_quarter", "total_sales_amount"])
-        df["total_sales_amount"] = pd.to_numeric(df["total_sales_amount"])
-
-        selected_branch = st.selectbox("Select Branch", df["branch_name"].unique())
-        filtered_data = df[df["branch_name"] == selected_branch]
-
+        filtered_data = self.service.get_total_sales_amount_fact_per_branch_per_quarter()
         st.line_chart(filtered_data.set_index("calendar_quarter")["total_sales_amount"])
 
     def show_derived_fact_content(self):
         st.header("Total Profit Fact")
         st.subheader("Total Profit Amount per Branch per Quarter")
-
-        data = self.db.total_profit_per_branch_per_quarter_year()
-
-        df = pd.DataFrame(data, columns=["branch_name", "calendar_quarter", "total_profit"])
-        df["total_profit"] = pd.to_numeric(df["total_profit"])
-
-        selected_branch = st.selectbox("Select Branch", df["branch_name"].unique())
-        filtered_data = df[df["branch_name"] == selected_branch]
-
+        filtered_data = self.service.get_total_profit_amount_per_branch_per_quarter()
         st.line_chart(filtered_data.set_index("calendar_quarter")["total_profit"])
-        # st.write("This is the content for Derived Fact")
 
     def show_additive_fact_content(self):
         st.write("This is the content for Additive Fact")
@@ -172,11 +149,8 @@ class GUI:
         st.write("This is the content for Accumulation Fact")
 
     def show_date_dimension_content(self):
-        data = self.db.get_date_dimension()
-
-        df = pd.DataFrame(data, columns=["Date ID", "Date", "Day of Week", "Calendar Month", "Calendar Quarter", "Calendar Year"])
-        
-        st.table(df)
+        pagination,pages,current_page = self.service.get_date_dimension()
+        pagination.dataframe(data=pages[current_page - 1], use_container_width=True)
 
     def show_matrix_bus_content(self):
         st.write("This is the content for Matrix Bus")

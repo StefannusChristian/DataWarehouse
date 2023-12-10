@@ -1,12 +1,10 @@
 import mysql.connector
 import os
 import random
-from datetime import datetime, timedelta
-import streamlit as st
 import pandas as pd
+from datetime import datetime, timedelta
 
-
-class Database:
+class Repository:
     def __init__(self, host: str, database: str, user: str="root", password: str=""):
         self.host = host
         self.user = user
@@ -62,7 +60,7 @@ class Database:
         start_date = datetime(2021, 1, 1)
         end_date = datetime(2023, 12, 31)
         self.insert_ordered_dates_to_database(start_date, end_date)
-        self.insert_order_data(100)
+        self.insert_order_data(num_rows)
         self.update_order_fact_total_amount()
         # self.insert_stock_fact_data(num_rows)
 
@@ -80,12 +78,11 @@ class Database:
                 date_id = self.get_random_existing_id('date_dimension', 'date_id')
                 branch_id = self.get_random_existing_id('branch', 'branch_id')
                 customer_id = self.get_random_existing_id('customer', 'customer_id')
-                supplier_id = self.get_random_existing_id('supplier', 'supplier_id')
 
                 # Insert order into order_fact
                 order_query = f"""
-                    INSERT INTO order_fact (order_id, date_id, branch_id, customer_id, supplier_id)
-                    VALUES ({order_id}, {date_id}, {branch_id}, {customer_id}, {supplier_id});
+                    INSERT INTO order_fact (order_id, date_id, branch_id, customer_id)
+                    VALUES ({order_id}, {date_id}, {branch_id}, {customer_id});
                 """
                 self.execute_query(order_query)
 
@@ -228,11 +225,12 @@ class Database:
                 SELECT
                     b.branch_name,
                     d.calendar_quarter,
-                    SUM(of.total_amount - (p.cost_price * of.quantity)) AS total_profit
+                    SUM(od.quantity * (p.price - p.cost_price)) AS total_profit
                 FROM order_fact of
                 JOIN branch b ON of.branch_id = b.branch_id
                 JOIN date_dimension d ON of.date_id = d.date_id
-                JOIN product p ON of.product_id = p.product_id
+                JOIN order_details od ON of.order_id = od.order_id
+                JOIN product p ON od.product_id = p.product_id
                 GROUP BY b.branch_name, d.calendar_quarter;
                 """
         result = self.execute_query(query)
@@ -247,7 +245,7 @@ class Database:
 
     def get_all_table_names(self) -> list[str]:
         return [item[0] for item in self.execute_query("SHOW TABLES;")]
-    
+
     def get_table_column_name(self, table_name: str, database: str = "gd_uas") -> list[str]:
         column_query = f"""
             SELECT column_name
@@ -256,14 +254,14 @@ class Database:
             AND table_name = '{table_name}';
         """
         return [item[0] for item in self.execute_query(column_query)]
-    
+
     def get_all_table_column_names(self) -> dict:
         table_names = self.get_all_table_names()
         result = {_: None for _ in table_names}
-        
+
         for tname in table_names:
             result[tname] = self.get_table_column_name(tname)
-            
+
         return result
 
     def retrive_all_data_from_all_tables(self) -> dict:
@@ -280,10 +278,10 @@ class Database:
         table_names = self.get_all_table_names()
         column_names = self.get_all_table_column_names()
         result = self.retrive_all_data_from_all_tables()
-        
+
         for tname in table_names:
             result[tname] = pd.DataFrame(result[tname], column_names[tname])
-        
+
         return result
 
     def initialize(self):

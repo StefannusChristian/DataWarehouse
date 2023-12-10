@@ -1,18 +1,16 @@
-from db import Database
-
+from repo import Repository
 
 host = "localhost"
 user = "root"
 password = ""
 database = "gd_uas"
 
-
 if __name__ == "__main__":
-    mydatabase = Database(
+    repo = Repository(
         host=host,
         user=user,
         password=password,
         database=database
     )
 
-    mydatabase.initialize()
+    repo.initialize()
