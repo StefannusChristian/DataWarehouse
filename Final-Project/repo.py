@@ -1,17 +1,19 @@
 import mysql.connector
 import os
 import random
-import pandas as pd
+import time
 from datetime import datetime, timedelta
 
+
 class Repository:
-    def __init__(self, host: str, database: str, user: str="root", password: str=""):
+    # host = "localhost" | "127.0.0.1"
+    def __init__(self, host="localhost", user="root", password="", database="gd_uas"):
         self.host = host
         self.user = user
         self.password = password
         self.database = database
 
-        self.create_database()
+        self.dummy_rows_to_insert = 500
         self.conn = self.connection()
         self.cursor = self.create_cursor()
 
@@ -33,36 +35,50 @@ class Repository:
         self.conn.commit()
 
     def create_database(self):
-        temp_conn = mysql.connector.connect(
-            host=self.host,
-            user=self.user,
-            password=self.password
-        )
-        temp_cursor = temp_conn.cursor()
+        print(F"Creating {self.database} Database...")
+        try:
+            temp_conn = mysql.connector.connect(
+                host=self.host,
+                user=self.user,
+                password=self.password
+            )
+            temp_cursor = temp_conn.cursor()
 
-        temp_cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
+            temp_cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.database}")
 
-        temp_cursor.close()
-        temp_conn.close()
+            temp_cursor.close()
+            temp_conn.close()
+
+            print(f"{self.database} database created successfully!")
+
+        except Exception as e:
+            print(f"Error creating database {self.database}: {e}")
+
+        print()
 
     def create_tables(self):
         create_table_path = "./sql/createtables/"
         for table_name_sql in os.listdir(create_table_path):
             table_path = create_table_path + table_name_sql
+            table_name = table_name_sql.split('.sql')[0].split("_")[-1]
+            print(f"Creating {table_name} table...")
             self.execute_sql_file(table_path)
+            print(f"{table_name} table created successfully!\n")
 
     def insert_dummy_datas(self, num_rows:int):
         dummy_data_path = "./sql/insertrows/"
         for table_name_sql in os.listdir(dummy_data_path):
+            table_name = table_name_sql.split('.sql')[0]
+            print(f"Inserting dummy datas to {table_name} dimension...")
             sql_path = dummy_data_path + table_name_sql
             self.execute_sql_file(sql_path)
+            print(f"{table_name} dimension inserted successfully!\n")
 
-        start_date = datetime(2021, 1, 1)
+        start_date = datetime(2020, 1, 1)
         end_date = datetime(2023, 12, 31)
         self.insert_ordered_dates_to_database(start_date, end_date)
         self.insert_order_data(num_rows)
         self.update_order_fact_total_amount()
-        # self.insert_stock_fact_data(num_rows)
 
     def get_product_price(self, product_id):
         query = f"SELECT price FROM product WHERE product_id = {product_id};"
@@ -72,41 +88,47 @@ class Repository:
         else:
             return 0
 
-    def insert_order_data(self, num_orders: int):
+    def insert_order_data(self, num_rows: int):
+        print(f"Inserting {num_rows} rows to order_facts...\n")
+        time.sleep(2)
         try:
-            for order_id in range(1, num_orders + 1):
+            for order_id in range(1, num_rows + 1):
                 date_id = self.get_random_existing_id('date_dimension', 'date_id')
                 branch_id = self.get_random_existing_id('branch', 'branch_id')
                 customer_id = self.get_random_existing_id('customer', 'customer_id')
 
-                # Insert order into order_fact
                 order_query = f"""
                     INSERT INTO order_fact (order_id, date_id, branch_id, customer_id)
                     VALUES ({order_id}, {date_id}, {branch_id}, {customer_id});
                 """
                 self.execute_query(order_query)
 
-                # Insert random products into order_details for the current order
-                num_products = random.randint(1, 50)
+                num_products = random.randint(1, 11)
+                print(f"Inserting {num_products} products to order_details for order_id {order_id}...")
+
                 for _ in range(num_products):
                     product_id = self.get_random_existing_id('product', 'product_id')
-                    quantity = random.randint(1, 10)  # Assuming a maximum quantity of 10
+                    quantity = random.randint(1, 6)
+                    print(f"Inserting {quantity} product_id {product_id}")
                     product_price = self.get_product_price(product_id)
 
                     total_amount = quantity * product_price
 
-                    # Insert product details into order_details
                     order_details_query = f"""
                         INSERT INTO order_details (order_id, product_id, quantity, total_amount)
                         VALUES ({order_id}, {product_id}, {quantity}, {total_amount});
                     """
                     self.execute_query(order_details_query)
 
-            print("Dummy data inserted successfully.")
+                print(f"Inserting order_id {order_id} to order_details table successfull!\n")
+
+            print("orders_facts and order_details data inserted successfully!\n")
+
         except Exception as e:
-            print(f"Error inserting dummy data: {e}")
+            print(f"Error inserting order data: {e}")
 
     def update_order_fact_total_amount(self):
+        print("Updating total_amount column in order_facts table...")
         try:
             # Calculate total_amount for each order and update order_fact
             update_query = """
@@ -120,8 +142,11 @@ class Repository:
             self.execute_query(update_query)
 
             print("Total Amount in order_fact updated successfully.")
+
         except Exception as e:
             print(f"Error updating total amount in order_fact: {e}")
+
+        print()
 
     def execute_sql_file(self, file_path):
         try:
@@ -134,20 +159,23 @@ class Repository:
                         self.cursor.execute(query)
                 self.commit()
 
-                print(f"SQL script in {file_path} executed successfully.")
-
         except Exception as e:
-            print(f"Error executing SQL script: {e}")
+            print(f"Error executing SQL script: {e}\n")
 
     def execute_query(self, query):
-        self.cursor.execute(query)
-        result = None
+        try:
+            self.cursor.execute(query)
+            result = None
 
-        if any(keyword in query.upper() for keyword in ["SELECT", "SHOW"]):
-            result = self.cursor.fetchall()
+            if any(keyword in query.upper() for keyword in ["SELECT", "SHOW"]):
+                result = self.cursor.fetchall()
 
-        self.commit()
-        return result
+            self.commit()
+
+            return result
+
+        except Exception as e:
+            print(f"Error executing query: {e}\n")
 
     def generate_ordered_dates(self, start_date, end_date):
         current_date = start_date
@@ -160,10 +188,19 @@ class Repository:
         return date_list
 
     def insert_ordered_dates_to_database(self, start_date, end_date):
+        print(f'Inserting dummy datas to date dimension...')
         try:
+            print(f"Inserting dates from {start_date.year} to {end_date.year}")
             dates = self.generate_ordered_dates(start_date, end_date)
 
+            current_year = None  # To track the current year being processed
+
             for date in dates:
+                # Check if the year has changed
+                if current_year != date.year:
+                    print(f"Inserting Dates for year {date.year}")
+                    current_year = date.year
+
                 calendar_month = date.strftime('%B')
                 calendar_quarter = f'Q{((date.month - 1) // 3) + 1}'
 
@@ -174,9 +211,12 @@ class Repository:
                 """
                 result = self.execute_query(query)
 
-            print("Ordered dates inserted successfully.")
+            print(f"Inserting dates from {start_date.year} to {end_date.year} successful!")
+
         except Exception as e:
-            print(f"Error inserting ordered dates: {e}")
+            print(f"Error inserting dates: {e}")
+
+        print()
 
     def get_random_existing_id(self, table_name:str, id_column:int):
         query = f"SELECT {id_column} FROM {table_name} ORDER BY RAND() LIMIT 1;"
@@ -184,57 +224,54 @@ class Repository:
         result = self.cursor.fetchone()
         return result[0] if result else None
 
-    def insert_stock_fact_data(self, num_rows: int):
-        try:
-            for i in range(num_rows):
-                date_id = self.get_random_existing_id('date_dimension', 'date_id')
-                branch_id = self.get_random_existing_id('branch', 'branch_id')
-                product_id = self.get_random_existing_id('product', 'product_id')
-
-                opening_stock = random.randint(1, 100)
-                quantity_sold = random.randint(1, opening_stock)
-                closing_stock = opening_stock - quantity_sold
-
-                query = f"""
-                INSERT INTO stock_fact (stock_id, date_id, branch_id, product_id, opening_stock, closing_stock, quantity_sold)
-                VALUES
-                    ({i}, {date_id}, {branch_id}, {product_id}, {opening_stock}, {closing_stock}, {quantity_sold});
-                """
-                result = self.execute_query(query)
-
-            print("Stock Fact data inserted successfully.")
-        except Exception as e:
-            print(f"Error inserting Stock Fact data: {e}")
-
-    def total_sales_amount_fact_per_branch_per_quarter_query(self):
+    # Fact Per Dimension 1 and 2
+    def total_sales_amount_fact_per_branch_per_year_query(self):
         query = """
                 SELECT
                     b.branch_name,
-                    d.calendar_quarter,
+                    d.calendar_year,
                     SUM(of.total_amount) AS total_sales_amount
                 FROM order_fact of
                 JOIN branch b ON of.branch_id = b.branch_id
                 JOIN date_dimension d ON of.date_id = d.date_id
-                GROUP BY b.branch_name, d.calendar_quarter;
-                """
+                GROUP BY b.branch_name, d.calendar_year;
+            """
         result = self.execute_query(query)
-        return result
+        return result,query
 
-    def total_profit_per_branch_per_quarter_year(self):
+    # Derived Fact Per Dimension 1 and 2
+    def total_profit_per_product_category_per_year(self):
         query = """
                 SELECT
-                    b.branch_name,
-                    d.calendar_quarter,
-                    SUM(od.quantity * (p.price - p.cost_price)) AS total_profit
-                FROM order_fact of
-                JOIN branch b ON of.branch_id = b.branch_id
-                JOIN date_dimension d ON of.date_id = d.date_id
-                JOIN order_details od ON of.order_id = od.order_id
+                    p.category,
+                    d.calendar_year,
+                    SUM(od.total_amount - (p.cost_price * od.quantity)) AS total_profit
+                FROM order_details od
+                JOIN order_fact of ON od.order_id = of.order_id
                 JOIN product p ON od.product_id = p.product_id
-                GROUP BY b.branch_name, d.calendar_quarter;
+                JOIN date_dimension d ON of.date_id = d.date_id
+                GROUP BY p.category, d.calendar_year;
                 """
         result = self.execute_query(query)
-        return result
+        return result,query
+
+    # Additive Fact Per Dimension 1,2 and 3
+    def total_profit_per_product_category_per_branch_per_year(self):
+        query = """
+                SELECT
+                    p.category,
+                    d.calendar_month,
+                    b.branch_name,
+                    SUM((of.total_amount - (p.cost_price * od.quantity))) AS total_profit
+                FROM order_details od
+                JOIN order_fact of ON od.order_id = of.order_id
+                JOIN product p ON od.product_id = p.product_id
+                JOIN branch b ON of.branch_id = b.branch_id
+                JOIN date_dimension d ON of.date_id = d.date_id
+                GROUP BY p.category, d.calendar_year, b.branch_name;
+                """
+        result = self.execute_query(query)
+        return result,query
 
     def get_date_dimension(self):
         query = """
@@ -255,15 +292,6 @@ class Repository:
         """
         return [item[0] for item in self.execute_query(column_query)]
 
-    def get_all_table_column_names(self) -> dict:
-        table_names = self.get_all_table_names()
-        result = {_: None for _ in table_names}
-
-        for tname in table_names:
-            result[tname] = self.get_table_column_name(tname)
-
-        return result
-
     def retrive_all_data_from_all_tables(self) -> dict:
         table_names = self.get_all_table_names()
         result = {_: None for _ in table_names}
@@ -274,21 +302,18 @@ class Repository:
 
         return result
 
-    def retrive_all_data_from_all_tables_to_dataframe(self) -> dict[pd.DataFrame]:
-        table_names = self.get_all_table_names()
-        column_names = self.get_all_table_column_names()
-        result = self.retrive_all_data_from_all_tables()
-
-        for tname in table_names:
-            result[tname] = pd.DataFrame(result[tname], column_names[tname])
-
-        return result
+    def drop_tables(self):
+        self.execute_query("SET foreign_key_checks = 0;")
+        for table_name in self.get_all_table_names():
+            query = f"DROP TABLE IF EXISTS {table_name};"
+            self.execute_query(query)
 
     def initialize(self):
         """
         NOTE:
-        This function only execute it on `init_db.py`
+        Only execute this function once on `init_db.py`
         """
-
+        self.create_database()
+        self.drop_tables()
         self.create_tables()
-        self.insert_dummy_datas(500)
+        self.insert_dummy_datas(self.dummy_rows_to_insert)

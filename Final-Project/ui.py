@@ -1,4 +1,5 @@
 import streamlit as st
+import altair as alt
 import pandas as pd
 from streamlit_option_menu import option_menu
 from service import Service
@@ -6,8 +7,8 @@ from service import Service
 class GUI:
     def __init__(self, service: Service):
         self.service = service
+        self.fig_size = 400
         self.set_page_config()
-        self.title_header()
         self.navbar()
 
     # Page Config
@@ -43,95 +44,124 @@ class GUI:
         st.divider()
 
     def navbar(self):
-        with st.sidebar:
-            selected_option = option_menu(
-                menu_title=None,
-                options = [
-                    "Display Data",
-                    "Quantity (Grain)",
-                    "Total Sales Fact",
-                    "Derived Fact",
-                    "Additive Fact",
-                    "Non Additive Fact",
-                    "Factless Fact",
-                    "Snapshot Fact",
-                    "Accumulation Fact",
-                    "Date Dimension",
-                    "Matrix Bus"
-                ],
-                icons = [
-                    "diamond-fill",
-                    "piggy-bank-fill",
-                    "arrow-right-square-fill",
-                    "plus-square-fill",
-                    "dash-square-fill",
-                    "file-earmark-code-fill",
-                    "camera-reels-fill",
-                    "collection-fill",
-                    "calendar-event-fill",
-                    "table"
-                ],
-                menu_icon="cast",
-                default_index=0,
-            )
+        options = [
+            "Display Data",
+            "Quantity (Grain)",
+            "Total Sales Fact",
+            "Derived Fact",
+            "Additive Fact",
+            "Non Additive Fact",
+            "Factless Fact",
+            "Snapshot Fact",
+            "Accumulation Fact",
+            "Date Dimension",
+            "Matrix Bus"
+        ]
+        icons = [
+            "ui-checks",
+            "diamond-fill",
+            "piggy-bank-fill",
+            "arrow-right-square-fill",
+            "plus-square-fill",
+            "dash-square-fill",
+            "file-earmark-code-fill",
+            "camera-reels-fill",
+            "collection-fill",
+            "calendar-event-fill",
+            "table"
+        ]
 
-        if selected_option == "Display Data":
-            self.show_tables_content()
+        options_length = len(options)
+        icons_length = len(icons)
 
-        elif selected_option == "Quantity (Grain)":
-            self.show_quantity_grain_content()
+        try:
+            assert options_length == icons_length
+            with st.sidebar:
+                selected_option = option_menu(
+                    menu_title=None,
+                    options=options,
+                    icons=icons,
+                    menu_icon="cast",
+                    default_index=2,
+                )
 
-        elif selected_option == "Total Sales Fact":
-            self.show_total_sales_fact_content()
+            if selected_option == "Display Data":
+                self.title_header()
+                self.show_tables_content()
 
-        elif selected_option == "Derived Fact":
-            self.show_derived_fact_content()
+            elif selected_option == "Quantity (Grain)":
+                self.show_quantity_grain_content()
 
-        elif selected_option == "Additive Fact":
-            self.show_additive_fact_content()
+            elif selected_option == "Total Sales Fact":
+                self.show_total_sales_fact_content()
 
-        elif selected_option == "Non Additive Fact":
-            self.show_non_additive_fact_content()
+            elif selected_option == "Derived Fact":
+                self.show_derived_fact_content()
 
-        elif selected_option == "Factless Fact":
-            self.show_factless_fact_content()
+            elif selected_option == "Additive Fact":
+                self.show_additive_fact_content()
 
-        elif selected_option == "Snapshot Fact":
-            self.show_snapshot_fact_content()
+            elif selected_option == "Non Additive Fact":
+                self.show_non_additive_fact_content()
 
-        elif selected_option == "Accumulation Fact":
-            self.show_accumulation_fact_content()
+            elif selected_option == "Factless Fact":
+                self.show_factless_fact_content()
 
-        elif selected_option == "Date Dimension":
-            self.show_date_dimension_content()
+            elif selected_option == "Snapshot Fact":
+                self.show_snapshot_fact_content()
 
-        elif selected_option == "Matrix Bus":
-            self.show_matrix_bus_content()
+            elif selected_option == "Accumulation Fact":
+                self.show_accumulation_fact_content()
 
+            elif selected_option == "Date Dimension":
+                self.show_date_dimension_content()
+
+            elif selected_option == "Matrix Bus":
+                self.show_matrix_bus_content()
+
+        except AssertionError:
+            st.error(f"Cannot Show Sidebar!  \nOptions Length ({options_length}) != Icons Length ({icons_length})")
+
+    def show_total_sales_fact_content(self):
+        filtered_data, fig,query = self.service.get_total_sales_amount_fact_per_branch_per_year()
+        self.line_chart_bar_chart_and_table_content(filtered_data, fig, 'calendar_year', 'total_sales_amount','Year','Total Sales',query)
+
+    def show_derived_fact_content(self):
+        filtered_data, fig,query = self.service.get_total_profit_per_product_category_per_year()
+        self.line_chart_bar_chart_and_table_content(filtered_data, fig, 'calendar_year', 'total_profit','Year','Total Profit',query)
+
+    def line_chart_bar_chart_and_table_content(self, filtered_data, fig, x_column:str, y_column:str, x_label:str, y_label:str,query:str):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.code(query)
+        with col2:
+            st.dataframe(filtered_data, hide_index=True)
+
+        col3, col4 = st.columns(2)
+        with col3:
+            line_chart = alt.Chart(filtered_data).mark_line(point=True).encode(
+                x=alt.X(f'{x_column}:O', title=x_label),
+                y=alt.Y(y_column, title=y_label),
+            ).properties(width=self.fig_size, height=self.fig_size)
+            st.altair_chart(line_chart, use_container_width=True)
+        with col4:
+            st.pyplot(fig)
 
     def show_tables_content(self):
         st.header("Display data")
 
         # p = self.db.get_all_table_names()
-        p = self.db.retrive_all_data_from_all_tables_to_dataframe()["customer"]
+        a, b = self.service.retrive_all_data_from_all_tables_to_dataframe()
+        # p = self.service.repo.retrive_all_data_from_all_tables_to_dataframe()["customer"]
 
-        st.dataframe(p)
-        st.text(type(p))
+        st.text(a)
+        st.text(b)
+        st.dataframe(pd.DataFrame(a, columns=b),hide_index=True)
+
+        # st.text(type(p))
 
     def show_quantity_grain_content(self):
         st.header("Quality (Grain)")
-
-    def show_total_sales_fact_content(self):
-        st.header("Total Sales Fact")
-        st.subheader("Total Sales Amount per Branch per Quarter")
-        filtered_data = self.service.get_total_sales_amount_fact_per_branch_per_quarter()
-        st.line_chart(filtered_data.set_index("calendar_quarter")["total_sales_amount"])
-
-    def show_derived_fact_content(self):
-        st.header("Total Profit Fact")
-        st.subheader("Total Profit Amount per Branch per Quarter")
-        filtered_data = self.service.get_total_profit_amount_per_branch_per_quarter()
-        st.line_chart(filtered_data.set_index("calendar_quarter")["total_profit"])
 
     def show_additive_fact_content(self):
         st.write("This is the content for Additive Fact")
