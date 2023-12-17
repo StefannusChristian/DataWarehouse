@@ -84,7 +84,7 @@ class GUI:
                     options=options,
                     icons=icons,
                     menu_icon="cast",
-                    default_index=2,
+                    default_index=0,
                 )
 
             if selected_option == "Display Data":
@@ -92,49 +92,63 @@ class GUI:
                 self.show_tables_content()
 
             elif selected_option == "Quantity (Grain)":
-                self.show_quantity_grain_content()
+                title = "Quantity (Grain) - Order Fac"
+                self.show_quantity_grain_content(title)
 
             elif selected_option == "Total Sales Fact":
-                self.show_total_sales_fact_content("Total Sales Fact Per Branch Per Year")
+                title = "Total Sales Amount Fact Per Branch Per Year"
+                self.show_total_sales_fact_content(title)
 
             elif selected_option == "Derived Fact":
-                self.show_derived_fact_content()
+                title = "Total Profit Per Product Category Per Year"
+                self.show_derived_fact_content(title)
 
             elif selected_option == "Additive Fact":
-                self.show_additive_fact_content()
+                title = "Total Profit Per Product Category Per Branch Per Year"
+                self.show_additive_fact_content(title)
 
             elif selected_option == "Non Additive Fact":
-                self.show_non_additive_fact_content()
+                title = "Average Unit Price Per Product Per Year"
+                self.show_non_additive_fact_content(title)
 
             elif selected_option == "Factless Fact":
-                self.show_factless_fact_content()
+                title = "Promotion Fact"
+                self.show_factless_fact_content(title)
 
             elif selected_option == "Snapshot Fact":
-                self.show_snapshot_fact_content()
+                title = ""
+                self.show_snapshot_fact_content(title)
 
             elif selected_option == "Accumulation Fact":
-                self.show_accumulation_fact_content()
+                title = ""
+                self.show_accumulation_fact_content(title)
 
             elif selected_option == "Date Dimension":
-                self.show_date_dimension_content()
+                title = "Date Dimension"
+                self.show_date_dimension_content(title)
 
             elif selected_option == "Matrix Bus":
+                title = ""
                 self.show_matrix_bus_content()
 
         except AssertionError:
             st.error(f"Cannot Show Sidebar!  \nOptions Length ({options_length}) != Icons Length ({icons_length})")
 
+    # Total Sales Amount Fact Per Branch Per Year
     def show_total_sales_fact_content(self, title: str):
         st.header(title)
         selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name","branch"))
         data, query = self.service.get_total_sales_amount_fact_per_branch_per_year(selected_branch)
-        self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'total_sales_amount', 'Year', 'Total Sales Amount', query)
+        self.line_chart_bar_chart_and_table_content(data,'calendar_year', 'total_sales_amount', 'Year', 'Total Sales Amount', query)
 
-    # def show_derived_fact_content(self):
-    #     data, fig,query = self.service.get_total_profit_per_product_category_per_year()
-    #     self.line_chart_bar_chart_and_table_content(data, fig, 'calendar_year', 'total_profit','Year','Total Profit',query)
+    # Total Profit Per Product Category Per Year
+    def show_derived_fact_content(self, title: str):
+        st.header(title)
+        selected_category = st.selectbox("Select Category", self.service.get_selectbox_values("category","product"))
+        data, query = self.service.get_total_profit_per_product_category_per_year(selected_category)
+        self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'total_profit','Year','Total Profit',query)
 
-    def line_chart_bar_chart_and_table_content(self, data, x_column:str, y_column:str, x_label:str, y_label:str,query:str):
+    def line_chart_bar_chart_and_table_content(self, data, x_column:str, y_column:str, x_label:str, y_label:str, query:str):
         col1, col2 = st.columns(2)
         with col1:
             st.code(query)
@@ -167,40 +181,102 @@ class GUI:
         ax.set_xticks(sorted(data[x_column].unique()))
         st.pyplot(fig)
 
+    # Victor
     def show_tables_content(self):
         st.header("Display data")
 
-        # p = self.db.get_all_table_names()
-        a, b = self.service.retrive_all_data_from_all_tables_to_dataframe()
-        # p = self.service.repo.retrive_all_data_from_all_tables_to_dataframe()["customer"]
+        df = self.service.retrive_all_data_from_all_tables()[1]
+        branch = df["branch"]
+        customer = df["customer"]
+        date_dimension = df["date_dimension"]
+        order_details = df["order_details"]
+        order_fact = df["order_fact"]
+        product = df["product"]
 
-        st.text(a)
-        st.text(b)
-        st.dataframe(pd.DataFrame(a, columns=b),hide_index=True)
+        col11, col12 = st.columns(2)
+        with col11:
+            st.markdown("#### :blue[branch]", unsafe_allow_html=False, help=None)
+            st.dataframe(branch, hide_index=True, use_container_width=True)
+        with col12:
+            st.markdown("#### :blue[customer]", unsafe_allow_html=False, help=None)
+            st.dataframe(customer, hide_index=True, use_container_width=True)
 
-        # st.text(type(p))
+        col21, col22 = st.columns(2)
+        with col21:
+            st.markdown("#### :blue[date_dimension]", unsafe_allow_html=False, help=None)
+            st.dataframe(date_dimension, hide_index=True, use_container_width=True)
+        with col22:
+            st.markdown("#### :blue[order_details]", unsafe_allow_html=False, help=None)
+            st.dataframe(order_details, hide_index=True, use_container_width=True)
 
-    def show_quantity_grain_content(self):
-        st.header("Quality (Grain)")
+        col31, col32 = st.columns(2)
+        with col31:
+            st.markdown("#### :blue[order_fact]", unsafe_allow_html=False, help=None)
+            st.dataframe(order_fact, hide_index=True, use_container_width=True)
+        with col32:
+            st.markdown("#### :blue[product]", unsafe_allow_html=False, help=None)
+            st.dataframe(product, hide_index=True, use_container_width=True)
 
-    def show_additive_fact_content(self):
-        st.write("This is the content for Additive Fact")
+        st.header("Database Relationship")
+        st.image('./images/db_relationship.png', caption='Database Relationship', width=510)
 
-    def show_non_additive_fact_content(self):
-        st.write("This is the content for Non Additive Fact")
+    def show_pagination_df(self, service_method):
+        data,query = service_method
+        st.code(query)
+        pagination, pages, current_page, height = self.service.paginate_df(data)
+        pagination.dataframe(data=pages[current_page - 1], height=height, use_container_width=True, hide_index=True)
 
-    def show_factless_fact_content(self):
-        st.write("This is the content for Factless Fact")
+    # Order Fact Quantity Grain
+    def show_quantity_grain_content(self, title:str):
+        st.header(title)
+        self.show_pagination_df(self.service.get_quantity_grain_data())
 
-    def show_snapshot_fact_content(self):
+    # Total Profit Per Product Category Per Branch Per Year
+    def show_additive_fact_content(self, title: str):
+        st.header(title)
+        col1,col2 = st.columns(2)
+        with col1:
+            selected_category = st.selectbox("Select Category", self.service.get_selectbox_values("category","product"))
+        with col2:
+            selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name","branch"))
+
+        data,query = self.service.get_total_profit_per_product_category_per_branch_per_year(selected_category, selected_branch)
+
+        col3, col4 = st.columns(2)
+        with col3:
+            st.code(query)
+        with col4:
+            st.dataframe(data, use_container_width=True, hide_index=True)
+
+        col5, col6 = st.columns(2)
+        with col5:
+            self.line_chart(data, "Year","Total Profit","Year","Total Profit")
+        with col6:
+            self.bar_chart(data, "Year","Total Profit","Year","Total Profit")
+
+    # Average Unit Price Per Product Per Year
+    def show_non_additive_fact_content(self, title:str):
+        st.header(title)
+        selected_product = st.selectbox("Select Product", self.service.get_selectbox_values("product_name","product"))
+        data, query = self.service.get_average_unit_price_per_product_per_year(selected_product)
+        self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'average_unit_price','Year','Average Unit Price',query)
+
+    def show_factless_fact_content(self, title: str):
+        st.header(title)
+        self.show_pagination_df(self.service.get_factless_fact_data())
+
+    def show_snapshot_fact_content(self, title: str):
+        st.header(title)
         st.write("This is the content for Snapshot Fact")
 
-    def show_accumulation_fact_content(self):
+    def show_accumulation_fact_content(self, title: str):
+        st.header(title)
         st.write("This is the content for Accumulation Fact")
 
-    def show_date_dimension_content(self):
-        pagination,pages,current_page = self.service.get_date_dimension()
-        pagination.dataframe(data=pages[current_page - 1], use_container_width=True)
+    def show_date_dimension_content(self, title):
+        st.header(title)
+        self.show_pagination_df(self.service.get_date_dimension())
 
-    def show_matrix_bus_content(self):
+    def show_matrix_bus_content(self, title: str):
+        st.header(title)
         st.write("This is the content for Matrix Bus")
