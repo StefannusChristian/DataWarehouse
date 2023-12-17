@@ -225,8 +225,8 @@ class Repository:
         return result[0] if result else None
 
     # Fact Per Dimension 1 and 2
-    def total_sales_amount_fact_per_branch_per_year_query(self):
-        query = """
+    def total_sales_amount_fact_per_branch_per_year_query(self, branch_name):
+        query = f"""
                 SELECT
                     b.branch_name,
                     d.calendar_year,
@@ -234,10 +234,16 @@ class Repository:
                 FROM order_fact of
                 JOIN branch b ON of.branch_id = b.branch_id
                 JOIN date_dimension d ON of.date_id = d.date_id
+                WHERE b.branch_name = '{branch_name}'
                 GROUP BY b.branch_name, d.calendar_year;
             """
         result = self.execute_query(query)
-        return result,query
+        return result, query
+
+    def select_box_values(self, column_name: str, table_name: str) -> list:
+        query = f"SELECT DISTINCT {column_name} FROM {table_name};"
+        result = self.execute_query(query)
+        return [row[0] for row in result]
 
     # Derived Fact Per Dimension 1 and 2
     def total_profit_per_product_category_per_year(self):

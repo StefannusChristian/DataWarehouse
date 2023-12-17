@@ -1,6 +1,8 @@
 import streamlit as st
 import altair as alt
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 from streamlit_option_menu import option_menu
 from service import Service
 
@@ -93,7 +95,7 @@ class GUI:
                 self.show_quantity_grain_content()
 
             elif selected_option == "Total Sales Fact":
-                self.show_total_sales_fact_content()
+                self.show_total_sales_fact_content("Total Sales Fact Per Branch Per Year")
 
             elif selected_option == "Derived Fact":
                 self.show_derived_fact_content()
@@ -122,30 +124,48 @@ class GUI:
         except AssertionError:
             st.error(f"Cannot Show Sidebar!  \nOptions Length ({options_length}) != Icons Length ({icons_length})")
 
-    def show_total_sales_fact_content(self):
-        filtered_data, fig,query = self.service.get_total_sales_amount_fact_per_branch_per_year()
-        self.line_chart_bar_chart_and_table_content(filtered_data, fig, 'calendar_year', 'total_sales_amount','Year','Total Sales',query)
+    def show_total_sales_fact_content(self, title: str):
+        st.header(title)
+        selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name","branch"))
+        data, query = self.service.get_total_sales_amount_fact_per_branch_per_year(selected_branch)
+        self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'total_sales_amount', 'Year', 'Total Sales Amount', query)
 
-    def show_derived_fact_content(self):
-        filtered_data, fig,query = self.service.get_total_profit_per_product_category_per_year()
-        self.line_chart_bar_chart_and_table_content(filtered_data, fig, 'calendar_year', 'total_profit','Year','Total Profit',query)
+    # def show_derived_fact_content(self):
+    #     data, fig,query = self.service.get_total_profit_per_product_category_per_year()
+    #     self.line_chart_bar_chart_and_table_content(data, fig, 'calendar_year', 'total_profit','Year','Total Profit',query)
 
-    def line_chart_bar_chart_and_table_content(self, filtered_data, fig, x_column:str, y_column:str, x_label:str, y_label:str,query:str):
+    def line_chart_bar_chart_and_table_content(self, data, x_column:str, y_column:str, x_label:str, y_label:str,query:str):
         col1, col2 = st.columns(2)
         with col1:
             st.code(query)
         with col2:
-            st.dataframe(filtered_data, hide_index=True)
+            st.dataframe(data, hide_index=True, use_container_width=True)
 
         col3, col4 = st.columns(2)
         with col3:
-            line_chart = alt.Chart(filtered_data).mark_line(point=True).encode(
-                x=alt.X(f'{x_column}:O', title=x_label),
-                y=alt.Y(y_column, title=y_label),
-            ).properties(width=self.fig_size, height=self.fig_size)
-            st.altair_chart(line_chart, use_container_width=True)
+            self.line_chart(data, x_column, y_column, x_label, y_label)
         with col4:
-            st.pyplot(fig)
+            self.bar_chart(data, x_column, y_column, x_label, y_label)
+
+    def line_chart(self, data, x_column: str, y_column: str, x_label: str, y_label: str):
+        line_chart = alt.Chart(data).mark_line(point=True).encode(
+            x=alt.X(f'{x_column}:O', title=x_label),
+            y=alt.Y(y_column, title=y_label),
+        ).properties(width=self.fig_size, height=self.fig_size)
+        st.altair_chart(line_chart, use_container_width=True)
+
+    def bar_chart(self, data, x_column: str, y_column: str, x_label: str, y_label: str):
+        fig, ax = plt.subplots()
+        color = "#0068C9"
+
+        for value, subset in data.groupby(x_column):
+            ax.bar(subset[x_column], subset[y_column], label=value, color=color)
+
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
+
+        ax.set_xticks(sorted(data[x_column].unique()))
+        st.pyplot(fig)
 
     def show_tables_content(self):
         st.header("Display data")
