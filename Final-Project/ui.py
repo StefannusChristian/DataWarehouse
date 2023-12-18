@@ -1,8 +1,7 @@
 import streamlit as st
 import altair as alt
-import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
+import plotly.express as px
 from streamlit_option_menu import option_menu
 from service import Service
 
@@ -182,7 +181,6 @@ class GUI:
         ax.tick_params(axis='x', rotation=45)
         st.pyplot(fig)
 
-    # Victor
     def show_tables_content(self):
         st.header("Display data")
 
@@ -194,6 +192,7 @@ class GUI:
         order_fact = df["order_fact"]
         product = df["product"]
         yearly_sales_snapshot = df["yearly_sales_snapshot"]
+        promotion_fact = df["promotion_fact"]
 
         col11, col12 = st.columns(2)
         with col11:
@@ -221,22 +220,14 @@ class GUI:
 
         col41, col42 = st.columns(2)
         with col41:
+            st.markdown("#### :blue[promotion_fact]", unsafe_allow_html=False, help=None)
+            st.dataframe(promotion_fact, hide_index=True, use_container_width=True)
+        with col42:
             st.markdown("#### :blue[yearly_sales_snapshot]", unsafe_allow_html=False, help=None)
             st.dataframe(yearly_sales_snapshot, hide_index=True, use_container_width=True)
-        # with col42:
-        #     st.markdown("#### :blue[product]", unsafe_allow_html=False, help=None)
-        #     st.dataframe(product, hide_index=True, use_container_width=True)
-
-        # col41, col42 = st.columns(2)
-        # with col41:
-        #     st.markdown("#### :blue[promotion_dimension]", unsafe_allow_html=False, help=None)
-        #     st.dataframe(promotion_dimension, hide_index=True, use_container_width=True)
-        # with col42:
-        #     st.markdown("#### :blue[promotion_fact]", unsafe_allow_html=False, help=None)
-        #     st.dataframe(promotion_fact, hide_index=True, use_container_width=True)
 
         st.header("Database Relationship")
-        st.image('./images/db_relationship.png', caption='Database Relationship', width=510)
+        st.image('./images/db_relationship.png', caption='Database Relationship')
 
     def show_pagination_df(self, service_method):
         data, query = service_method
@@ -279,20 +270,43 @@ class GUI:
         data, query = self.service.get_average_units_sold_per_transaction_per_branch_per_year(selected_branch)
         self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'average_units_sold_per_transaction','Year','Average Units Sold Per Transaction',query)
 
-
     def show_factless_fact_content(self, title: str):
         st.header(title)
         data, query = self.service.get_factless_fact_data()
         st.code(query)
-        st.dataframe(data)
+        st.dataframe(data, hide_index=True, use_container_width=True)
 
     def show_snapshot_fact_content(self, title: str):
         st.header(title)
-        data, query = self.service.snapshot_fact_data()
-        st.code(query)
-        st.dataframe(data,hide_index=True,use_container_width=True)
+        selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name","branch"))
+        data, query = self.service.snapshot_fact_data(selected_branch)
+        fig, ax1 = plt.subplots(figsize=(10, 6))
 
-    # Victor
+        ax1.set_xlabel('Date')
+        ax1.set_ylabel('Total Sales', color='tab:blue')
+        ax1.plot(data['Date'], data['Total Sales'].astype(float), color='tab:blue')
+        ax1.tick_params(axis='y', labelcolor='tab:blue')
+        ax1.set_xticklabels(ax1.get_xticklabels(), rotation=45, ha='right')
+
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('Profit', color='tab:orange')
+        ax2.plot(data['Date'], data['Profit'].astype(float), color='tab:orange')
+        ax2.tick_params(axis='y', labelcolor='tab:orange')
+
+        # Formatting
+        plt.xticks(rotation=90)
+        plt.tight_layout()
+
+        # Display the chart
+        st.pyplot(fig)
+
+        col1,col2 = st.columns(2)
+        with col1:
+            st.code(query)
+        with col2:
+            st.dataframe(data,hide_index=True,use_container_width=True)
+
+
     def show_accumulation_fact_content(self, title: str):
         st.header(title)
         selected_category = st.selectbox("Select Category", self.service.get_selectbox_values("category", "product"))
@@ -303,7 +317,15 @@ class GUI:
         with col2:
             st.dataframe(data, use_container_width=True, hide_index=True)
 
-        self.bar_chart(data, "Customer Name", "Total Quantity Bought","Customer Name", "Total Quantity Bought")
+        col3, col4 = st.columns(2)
+        with col3:
+            self.pie_chart(data)
+        with col4:
+            self.bar_chart(data, "Customer Name", "Total Quantity Bought","Customer Name", "Total Quantity Bought")
+
+    def pie_chart(self, data):
+        fig = px.pie(data, names='Customer Name', values='Total Quantity Bought')
+        st.plotly_chart(fig, use_container_width=True)
 
     def show_date_dimension_content(self, title):
         st.header(title)

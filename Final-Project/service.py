@@ -81,11 +81,12 @@ class Service:
         return df, query
 
     # Snapshot Fact Service
-    def snapshot_fact_data(self):
-        data, query  = self.repo.get_snapshot_query()
-        columns = ["Snapshot ID", "Date ID", "Branch ID", "Total Sales","Profit","Branch Name"]
+    def snapshot_fact_data(self, branch: str):
+        data, query  = self.repo.get_snapshot_query(branch)
+        columns = ["Snapshot ID", "Date", "Total Sales","Profit"]
         df = pd.DataFrame(data, columns=columns)
-        df = df.astype({"Date ID" : "string"})
+        df = df.astype({"Date" : "string"})
+        df['Date'] = pd.to_datetime(df['Date'], format='%Y%m%d').dt.strftime('%A, %d-%m-%Y')
         return df, query
 
     @st.cache_data(show_spinner=False)

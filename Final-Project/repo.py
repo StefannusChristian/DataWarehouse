@@ -42,9 +42,9 @@ class Repository:
                 "Cameras & Photography",
             ]
 
-        self.num_of_order_fact_data_to_insert = 50
-        self.num_of_products_to_insert = 20
-        self.start_date = datetime(2020, 1, 1)
+        self.num_of_order_fact_data_to_insert = 10000
+        self.num_of_products_to_insert = 100
+        self.start_date = datetime(2013, 1, 1)
         self.end_date = datetime(2023, 12, 31)
 
         self.conn = self.connection()
@@ -139,19 +139,21 @@ class Repository:
 
                 snapshot_id += 1
 
-    def get_snapshot_query(self):
-        query = """
+    def get_snapshot_query(self, branch: str):
+        query = f"""
                 SELECT
                     yss.snapshot_id,
                     yss.date_id,
-                    yss.branch_id,
                     yss.total_sales,
-                    yss.profit,
-                    b.branch_name
+                    yss.profit
                 FROM
                     yearly_sales_snapshot yss
                 JOIN
                     branch b ON yss.branch_id = b.branch_id
+                WHERE
+                    b.branch_name = '{branch}'
+                ORDER BY
+                    yss.date_id DESC;
                 """
         result = self.execute_query(query)
         return result,query
