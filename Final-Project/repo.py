@@ -1,8 +1,6 @@
 import mysql.connector
 import os
 import random
-import time
-import uuid
 from datetime import datetime, timedelta
 
 
@@ -13,8 +11,11 @@ class Repository:
         self.password = password
         self.database = database
 
-        self.num_of_order_fact_data_to_insert = 500
-        self.num_of_promotion_fact_data_to_insert = 30
+        self.num_of_order_fact_data_to_insert = 100
+        self.num_of_promotion_data_to_insert = 50
+        self.start_date = datetime(2020, 1, 1)
+        self.end_date = datetime(2023, 12, 31)
+
         self.conn = self.connection()
         self.cursor = self.create_cursor()
 
@@ -78,12 +79,11 @@ class Repository:
             self.execute_sql_file(sql_path)
             print(f"{table_name} dimension inserted successfully!\n")
 
-        start_date = datetime(2020, 1, 1)
-        end_date = datetime(2023, 12, 31)
-        self.insert_ordered_dates_to_database(start_date, end_date)
+        self.insert_ordered_dates_to_database(self.start_date, self.end_date)
         self.insert_order_data(num_rows)
         self.update_order_fact_total_amount()
-        self.insert_promotion_fact_data(self.num_of_promotion_fact_data_to_insert)
+        self.insert_promotion_dimension_data(self.num_of_promotion_data_to_insert)
+        self.insert_promotion_fact_data(self.num_of_promotion_data_to_insert-20)
 
     def get_product_price(self, product_id):
         query = f"SELECT price FROM product WHERE product_id = {product_id};"
@@ -93,17 +93,41 @@ class Repository:
         else:
             return 0
 
+    def insert_promotion_dimension_data(self, num_rows):
+        try:
+            for promotion_id in range(1, num_rows+1):
+                promotion_name = f"Promotion_{promotion_id}"
+                start_date = self.get_random_date(self.start_date, self.end_date)
+                end_date = self.get_random_date(start_date, self.end_date)
+                description = f"Description for Promotion {promotion_id}"
+
+                query = f"""
+                    INSERT INTO promotion_dimension (promotion_id, promotion_name, start_date, end_date, description)
+                    VALUES ({promotion_id}, '{promotion_name}', '{start_date}', '{end_date}', '{description}');
+                """
+                self.execute_query(query)
+
+            print(f'Inserting {num_rows} rows of promotion_dimension successful!')
+
+        except Exception as e:
+            print(f"Error inserting promotion_dimension data: {e}")
+
+    def get_random_date(self, start_date, end_date):
+        delta = end_date - start_date
+        random_days = timedelta(days=random.randint(0, delta.days))
+        return start_date + random_days
+
     def insert_promotion_fact_data(self, num_rows):
         try:
-            for _ in range(num_rows):
-                promotion_id = uuid.uuid4()
+            for promotion_fact_id in range(1, num_rows+1):
+                promotion_id = self.get_random_existing_id("promotion_dimension", "promotion_id")
                 product_id = self.get_random_existing_id("product", "product_id")
-                date_id = self.get_random_existing_id("date_dimension", "date_id")
+                date_id = self.get_random_date_in_promotion(promotion_id)
                 branch_id = self.get_random_existing_id("branch", "branch_id")
 
                 query = f"""
-                    INSERT INTO promotion_fact (promotion_id, product_id, date_id, branch_id)
-                    VALUES ('{promotion_id}', {product_id}, {date_id}, {branch_id});
+                    INSERT INTO promotion_fact (promotion_fact_id, promotion_id, product_id, date_id, branch_id)
+                    VALUES ({promotion_fact_id}, {promotion_id}, {product_id}, {date_id}, {branch_id});
                 """
                 self.execute_query(query)
 
@@ -112,9 +136,29 @@ class Repository:
         except Exception as e:
             print(f"Error inserting promotion_fact data: {e}")
 
+    def get_random_date_in_promotion(self, promotion_id):
+        query = f"SELECT start_date, end_date FROM promotion_dimension WHERE promotion_id = {promotion_id};"
+        result = self.execute_query(query)
+
+        if result:
+            start_date, end_date = result[0]
+
+            # Generate a random date within the promotion start and end dates
+            random_date = self.get_random_date(start_date, end_date)
+
+            # Get the corresponding date_id from the date_dimension table
+            date_id_query = f"SELECT date_id FROM date_dimension WHERE full_date = '{random_date}';"
+            date_id_result = self.execute_query(date_id_query)
+
+            if date_id_result:
+                return date_id_result[0][0]
+            else:
+                raise ValueError(f"No date_id found for date {random_date}")
+        else:
+            raise ValueError(f"No promotion found with ID {promotion_id}")
+
     def insert_order_data(self, num_rows: int):
         print(f"Inserting {num_rows} rows to order_facts...\n")
-        time.sleep(2)
         try:
             for order_id in range(1, num_rows + 1):
                 date_id = self.get_random_existing_id('date_dimension', 'date_id')
@@ -349,12 +393,16 @@ class Repository:
         query = """
             SELECT
                 pf.promotion_id,
+                pd.description AS promotion_description,
+                pd.start_date,
+                pd.end_date,
                 pf.date_id,
                 b.branch_name,
                 p.product_name
             FROM promotion_fact pf
             JOIN branch b ON pf.branch_id = b.branch_id
             JOIN product p ON pf.product_id = p.product_id
+            JOIN promotion_dimension pd ON pf.promotion_id = pd.promotion_id
             ORDER BY pf.date_id DESC;
         """
         result = self.execute_query(query)

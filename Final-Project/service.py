@@ -64,9 +64,12 @@ class Service:
     # Factless Fact Service
     def get_factless_fact_data(self):
         data, query = self.repo.factless_fact()
-        columns = ["Promotion ID","Date","Branch Name","Product Name"]
+        columns = ["Promotion ID","Description","Start Date","End Date","Promotion Date","Branch Name","Product Name"]
         df = pd.DataFrame(data, columns=columns)
-        df['Date'] = pd.to_datetime(df['Date'], format='%Y%m%d').dt.strftime('%A, %d-%m-%Y')
+        df['Start Date'] = pd.to_datetime(df['Start Date'], format='%Y%m%d').dt.strftime('%A, %d-%m-%Y')
+        df['End Date'] = pd.to_datetime(df['End Date'], format='%Y%m%d').dt.strftime('%A, %d-%m-%Y')
+        df = df.astype({"Promotion Date" : "string"})
+        df['Promotion Date'] = pd.to_datetime(df['Promotion Date'], format='%Y%m%d').dt.strftime('%A, %d-%m-%Y')
         return df, query
 
     @st.cache_data(show_spinner=False)
