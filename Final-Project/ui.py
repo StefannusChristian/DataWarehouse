@@ -92,7 +92,7 @@ class GUI:
                 self.show_tables_content()
 
             elif selected_option == "Quantity (Grain)":
-                title = "Quantity (Grain) - Order Fac"
+                title = "Quantity (Grain) - Order Fact"
                 self.show_quantity_grain_content(title)
 
             elif selected_option == "Total Sales Fact":
@@ -108,11 +108,11 @@ class GUI:
                 self.show_additive_fact_content(title)
 
             elif selected_option == "Non Additive Fact":
-                title = "Average Unit Price Per Product Per Year"
+                title = "Average Units Sold Per Transaction Per Branch Per Year"
                 self.show_non_additive_fact_content(title)
 
             elif selected_option == "Factless Fact":
-                title = "Promotion Fact"
+                title = "List Of Customers Who Never Bought A Product Per Branch"
                 self.show_factless_fact_content(title)
 
             elif selected_option == "Snapshot Fact":
@@ -120,7 +120,7 @@ class GUI:
                 self.show_snapshot_fact_content(title)
 
             elif selected_option == "Accumulation Fact":
-                title = ""
+                title = "Top 5 Quantity Of Products Bought Per Customer Per Product Category"
                 self.show_accumulation_fact_content(title)
 
             elif selected_option == "Date Dimension":
@@ -137,7 +137,7 @@ class GUI:
     # Total Sales Amount Fact Per Branch Per Year
     def show_total_sales_fact_content(self, title: str):
         st.header(title)
-        selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name","branch"))
+        selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name", "branch"))
         data, query = self.service.get_total_sales_amount_fact_per_branch_per_year(selected_branch)
         self.line_chart_bar_chart_and_table_content(data,'calendar_year', 'total_sales_amount', 'Year', 'Total Sales Amount', query)
 
@@ -179,6 +179,7 @@ class GUI:
         ax.set_ylabel(y_label)
 
         ax.set_xticks(sorted(data[x_column].unique()))
+        ax.tick_params(axis='x', rotation=45)
         st.pyplot(fig)
 
     # Victor
@@ -192,6 +193,7 @@ class GUI:
         order_details = df["order_details"]
         order_fact = df["order_fact"]
         product = df["product"]
+        yearly_sales_snapshot = df["yearly_sales_snapshot"]
 
         col11, col12 = st.columns(2)
         with col11:
@@ -216,6 +218,22 @@ class GUI:
         with col32:
             st.markdown("#### :blue[product]", unsafe_allow_html=False, help=None)
             st.dataframe(product, hide_index=True, use_container_width=True)
+
+        col41, col42 = st.columns(2)
+        with col41:
+            st.markdown("#### :blue[yearly_sales_snapshot]", unsafe_allow_html=False, help=None)
+            st.dataframe(yearly_sales_snapshot, hide_index=True, use_container_width=True)
+        # with col42:
+        #     st.markdown("#### :blue[product]", unsafe_allow_html=False, help=None)
+        #     st.dataframe(product, hide_index=True, use_container_width=True)
+
+        # col41, col42 = st.columns(2)
+        # with col41:
+        #     st.markdown("#### :blue[promotion_dimension]", unsafe_allow_html=False, help=None)
+        #     st.dataframe(promotion_dimension, hide_index=True, use_container_width=True)
+        # with col42:
+        #     st.markdown("#### :blue[promotion_fact]", unsafe_allow_html=False, help=None)
+        #     st.dataframe(promotion_fact, hide_index=True, use_container_width=True)
 
         st.header("Database Relationship")
         st.image('./images/db_relationship.png', caption='Database Relationship', width=510)
@@ -257,21 +275,48 @@ class GUI:
     # Average Unit Price Per Product Per Year
     def show_non_additive_fact_content(self, title:str):
         st.header(title)
-        selected_product = st.selectbox("Select Product", self.service.get_selectbox_values("product_name","product"))
-        data, query = self.service.get_average_unit_price_per_product_per_year(selected_product)
-        self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'average_unit_price','Year','Average Unit Price',query)
+        selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name","branch"))
+        data, query = self.service.get_average_units_sold_per_transaction_per_branch_per_year(selected_branch)
+        self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'average_units_sold_per_transaction','Year','Average Units Sold Per Transaction',query)
+
+    # def show_non_additive_fact_content(self, title:str):
+    #     st.header(title)
+    #     selected_product = st.selectbox("Select Product", self.service.get_selectbox_values("product_name","product"))
+    #     data, query = self.service.get_average_unit_price_per_product_per_year(selected_product)
+    #     self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'average_unit_price','Year','Average Unit Price',query)
+        
 
     def show_factless_fact_content(self, title: str):
         st.header(title)
-        self.show_pagination_df(self.service.get_factless_fact_data())
+        
+        selected_product = st.selectbox("Select Product", self.service.get_selectbox_values("product_name","product"))
+        selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name","branch"))
+        data, query = self.service.get_factless_fact_data(selected_product, selected_branch)
+        
+        col1, col2 = st.columns([2, 3])
+        with col1:
+            st.code(query)
+        with col2:
+            st.dataframe(data, use_container_width=True, hide_index=True)
+            
+        st.write(data.shape)
 
     def show_snapshot_fact_content(self, title: str):
         st.header(title)
         st.write("This is the content for Snapshot Fact")
 
+    # Victor
     def show_accumulation_fact_content(self, title: str):
         st.header(title)
-        st.write("This is the content for Accumulation Fact")
+        selected_category = st.selectbox("Select Category", self.service.get_selectbox_values("category", "product"))
+        data, query = self.service.get_top_5_quantity_of_products_bought_per_customer_per_product_category(selected_category)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.code(query)
+        with col2:
+            st.dataframe(data, use_container_width=True, hide_index=True)
+
+        self.bar_chart(data, "Customer Name", "Total Quantity Bought","Customer Name", "Total Quantity Bought")
 
     def show_date_dimension_content(self, title):
         st.header(title)

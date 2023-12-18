@@ -2,8 +2,6 @@ import mysql.connector
 import os
 import random
 from datetime import datetime, timedelta
-
-
 class Repository:
     def __init__(self, host="localhost", user="root", password="", database="gd_uas"):
         self.host = host
@@ -11,8 +9,41 @@ class Repository:
         self.password = password
         self.database = database
 
-        self.num_of_order_fact_data_to_insert = 100
-        self.num_of_promotion_data_to_insert = 50
+        self.categories = [
+                "Electronics",
+                "Clothing",
+                "Home & Garden",
+                "Automotive",
+                "Toys & Games",
+                "Sports",
+                "Books",
+                "Beauty & Personal Care",
+                "Health",
+                "Computers",
+                "Grocery",
+                "Jewelry",
+                "Movies",
+                "Music",
+                "Pet Supplies",
+                "Tools & Home Improvement",
+                "Office Products",
+                "Baby",
+                "Industrial & Scientific",
+                "Arts & Crafts",
+                "Collectibles",
+                "Food & Drink",
+                "Gourmet",
+                "Luggage & Travel Gear",
+                "Musical Instruments",
+                "Software",
+                "Shoes",
+                "Watches",
+                "Cell Phones & Accessories",
+                "Cameras & Photography",
+            ]
+
+        self.num_of_order_fact_data_to_insert = 200
+        self.num_of_products_to_insert = 90
         self.start_date = datetime(2020, 1, 1)
         self.end_date = datetime(2023, 12, 31)
 
@@ -79,11 +110,38 @@ class Repository:
             self.execute_sql_file(sql_path)
             print(f"{table_name} dimension inserted successfully!\n")
 
+        self.insert_product_dimension(self.num_of_products_to_insert)
         self.insert_ordered_dates_to_database(self.start_date, self.end_date)
         self.insert_order_data(num_rows)
         self.update_order_fact_total_amount()
-        self.insert_promotion_dimension_data(self.num_of_promotion_data_to_insert)
-        self.insert_promotion_fact_data(self.num_of_promotion_data_to_insert-20)
+
+    def insert_snapshot_fact(self):
+        print(f'Inserting snapshot fact yearly_sales_snapshot fact...')
+
+
+    def insert_product_dimension(self, num_rows: int):
+        print(f'Inserting {num_rows} products to product table...')
+        try:
+            for product_id in range(1, num_rows + 1):
+                product_name = f"Product Name {product_id}"
+                category = random.choice(self.categories)
+                price = round(random.uniform(10, 100), 2)
+                cost_price = round(random.uniform(5, 50), 2)
+
+                # Ensure price is higher than cost_price
+                while price <= cost_price:
+                    price = round(random.uniform(10, 100), 2)
+
+                query = f"""
+                        INSERT INTO product (product_id, product_name, category, price, cost_price)
+                        VALUES ({product_id}, '{product_name}', '{category}', {price}, {cost_price});
+                    """
+                self.execute_query(query)
+
+            print(f"Successfully inserted {num_rows} rows into the 'product' table.\n")
+
+        except Exception as e:
+            print(f"Error inserting product data: {str(e)}\n")
 
     def get_product_price(self, product_id):
         query = f"SELECT price FROM product WHERE product_id = {product_id};"
@@ -93,69 +151,10 @@ class Repository:
         else:
             return 0
 
-    def insert_promotion_dimension_data(self, num_rows):
-        try:
-            for promotion_id in range(1, num_rows+1):
-                promotion_name = f"Promotion_{promotion_id}"
-                start_date = self.get_random_date(self.start_date, self.end_date)
-                end_date = self.get_random_date(start_date, self.end_date)
-                description = f"Description for Promotion {promotion_id}"
-
-                query = f"""
-                    INSERT INTO promotion_dimension (promotion_id, promotion_name, start_date, end_date, description)
-                    VALUES ({promotion_id}, '{promotion_name}', '{start_date}', '{end_date}', '{description}');
-                """
-                self.execute_query(query)
-
-            print(f'Inserting {num_rows} rows of promotion_dimension successful!')
-
-        except Exception as e:
-            print(f"Error inserting promotion_dimension data: {e}")
-
     def get_random_date(self, start_date, end_date):
         delta = end_date - start_date
         random_days = timedelta(days=random.randint(0, delta.days))
         return start_date + random_days
-
-    def insert_promotion_fact_data(self, num_rows):
-        try:
-            for promotion_fact_id in range(1, num_rows+1):
-                promotion_id = self.get_random_existing_id("promotion_dimension", "promotion_id")
-                product_id = self.get_random_existing_id("product", "product_id")
-                date_id = self.get_random_date_in_promotion(promotion_id)
-                branch_id = self.get_random_existing_id("branch", "branch_id")
-
-                query = f"""
-                    INSERT INTO promotion_fact (promotion_fact_id, promotion_id, product_id, date_id, branch_id)
-                    VALUES ({promotion_fact_id}, {promotion_id}, {product_id}, {date_id}, {branch_id});
-                """
-                self.execute_query(query)
-
-            print(f'Inserting {num_rows} rows of promotion_fact successful!')
-
-        except Exception as e:
-            print(f"Error inserting promotion_fact data: {e}")
-
-    def get_random_date_in_promotion(self, promotion_id):
-        query = f"SELECT start_date, end_date FROM promotion_dimension WHERE promotion_id = {promotion_id};"
-        result = self.execute_query(query)
-
-        if result:
-            start_date, end_date = result[0]
-
-            # Generate a random date within the promotion start and end dates
-            random_date = self.get_random_date(start_date, end_date)
-
-            # Get the corresponding date_id from the date_dimension table
-            date_id_query = f"SELECT date_id FROM date_dimension WHERE full_date = '{random_date}';"
-            date_id_result = self.execute_query(date_id_query)
-
-            if date_id_result:
-                return date_id_result[0][0]
-            else:
-                raise ValueError(f"No date_id found for date {random_date}")
-        else:
-            raise ValueError(f"No promotion found with ID {promotion_id}")
 
     def insert_order_data(self, num_rows: int):
         print(f"Inserting {num_rows} rows to order_facts...\n")
@@ -308,25 +307,70 @@ class Repository:
         result = self.execute_query(query)
         return result,query
 
-    def select_box_values(self, column_name: str, table_name: str) -> list:
+    def select_box_values(self, column_name: str, table_name: str) -> list[str]:
         query = f"SELECT DISTINCT {column_name} FROM {table_name};"
+        result = self.execute_query(query)  # [(x1,), (x2,), ...]
+        return [row[0] for row in result]  # Extract nested
+
+    # Accumulation Fact Per Dimension 1 and 2 Repo
+    def top_5_quantity_of_products_bought_per_customer_per_product_category(self, category: str):
+        query = f"""
+                SELECT
+                    c.customer_name AS customer_name,
+                    p.category AS category,
+                    SUM(od.quantity) AS total_quantity_sold
+                FROM
+                    order_fact of
+                JOIN
+                    order_details od ON of.order_id = od.order_id
+                JOIN
+                    product p ON od.product_id = p.product_id
+                JOIN
+                    customer c ON of.customer_id = c.customer_id
+                WHERE
+                    p.category = '{category}'
+                GROUP BY
+                    customer_name, category
+                ORDER BY
+                    total_quantity_sold DESC
+                LIMIT 5;
+            """
         result = self.execute_query(query)
-        return [row[0] for row in result]
+        return result,query
+
+    # Factless Fact Per Dimension 1 and 2 Repo
+    def list_of_customers_who_never_bought_a_product_per_branch(self, product: str, branch: str):
+        query = f"""
+            SELECT
+                d.full_date,
+                b.branch_name,
+                c.customer_name
+            FROM
+                date_dimension d
+            CROSS JOIN
+                branch b
+            CROSS JOIN
+                customer c;
+        """
+
+        result = self.execute_query(query)
+        return result, query
 
     # Derived Fact Per Dimension 1 and 2 Repo
     def total_profit_per_product_category_per_year(self, category):
         query = f"""
-                SELECT
-                    p.category,
-                    d.calendar_year,
-                    SUM(od.total_amount - (p.cost_price * od.quantity)) AS total_profit
-                FROM order_details od
-                JOIN order_fact of ON od.order_id = of.order_id
-                JOIN product p ON od.product_id = p.product_id
-                JOIN date_dimension d ON of.date_id = d.date_id
-                WHERE p.category = '{category}'
-                GROUP BY p.category, d.calendar_year;
-                """
+            SELECT
+                p.category,
+                d.calendar_year,
+                SUM(od.total_amount - (p.cost_price * od.quantity)) AS total_profit
+            FROM order_details od
+            JOIN order_fact of ON od.order_id = of.order_id
+            JOIN product p ON od.product_id = p.product_id
+            JOIN date_dimension d ON of.date_id = d.date_id
+            WHERE p.category = '{category}'
+            GROUP BY p.category, d.calendar_year;
+        """
+        
         result = self.execute_query(query)
         return result, query
 
@@ -370,6 +414,26 @@ class Repository:
         result = self.execute_query(query)
         return result, query
 
+    def average_units_sold_per_transaction_per_branch_per_year(self, branch):
+        query = f"""
+            SELECT
+                b.branch_name,
+                d.calendar_year,
+                AVG(od.quantity) AS average_units_sold_per_transaction
+            FROM
+                order_details od
+                JOIN order_fact of ON of.order_id = od.order_id
+                JOIN date_dimension d ON of.date_id = d.date_id
+                JOIN branch b ON b.branch_id = of.branch_id
+
+            WHERE b.branch_name = '{branch}'
+            GROUP BY
+                b.branch_name, d.calendar_year;
+        """
+
+        result = self.execute_query(query)
+        return result, query
+
     # Quantity (Grain) Repo
     def quantity_grain(self):
         query = """
@@ -407,6 +471,7 @@ class Repository:
         """
         result = self.execute_query(query)
         return result, query
+
 
     def select_all_from(self, table_name: str):
         """

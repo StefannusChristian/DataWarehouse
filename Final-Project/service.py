@@ -52,6 +52,9 @@ class Service:
     def get_average_unit_price_per_product_per_year(self, product):
         return self.get_data_and_query("product", "calendar_year", "average_unit_price", self.repo.average_unit_price_per_product_per_year(product))
 
+    def get_average_units_sold_per_transaction_per_branch_per_year(self, branch):
+        return self.get_data_and_query("branch", "calendar_year", "average_units_sold_per_transaction", self.repo.average_units_sold_per_transaction_per_branch_per_year(branch))
+
     # Date Dimension Service
     def get_date_dimension(self):
         data, query = self.repo.date_dimension_query()
@@ -61,15 +64,19 @@ class Service:
         df = df.astype({"date_id" : "string"})
         return df, query
 
-    # Factless Fact Service
-    def get_factless_fact_data(self):
-        data, query = self.repo.factless_fact()
-        columns = ["Promotion ID","Description","Start Date","End Date","Promotion Date","Branch Name","Product Name"]
+    # Accumulation Fact Service
+    def get_top_5_quantity_of_products_bought_per_customer_per_product_category(self, category: str):
+        data, query = self.repo.top_5_quantity_of_products_bought_per_customer_per_product_category(category)
+        columns = ["Customer Name","Product Category","Total Quantity Bought"]
         df = pd.DataFrame(data, columns=columns)
-        df['Start Date'] = pd.to_datetime(df['Start Date'], format='%Y%m%d').dt.strftime('%A, %d-%m-%Y')
-        df['End Date'] = pd.to_datetime(df['End Date'], format='%Y%m%d').dt.strftime('%A, %d-%m-%Y')
-        df = df.astype({"Promotion Date" : "string"})
-        df['Promotion Date'] = pd.to_datetime(df['Promotion Date'], format='%Y%m%d').dt.strftime('%A, %d-%m-%Y')
+        return df, query
+
+    # Factless Fact Service
+    def get_factless_fact_data(self, product, branch):
+        data, query = self.repo.list_of_customers_who_never_bought_a_product_per_branch(product, branch)
+        columns = ["YYYY MM DD", "Branch name", "Customer name"]
+        df = pd.DataFrame(data, columns=columns)
+        # df = pd.DataFrame(data)
         return df, query
 
     @st.cache_data(show_spinner=False)
