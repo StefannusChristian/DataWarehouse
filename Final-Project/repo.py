@@ -42,8 +42,8 @@ class Repository:
                 "Cameras & Photography",
             ]
 
-        self.num_of_order_fact_data_to_insert = 200
-        self.num_of_products_to_insert = 90
+        self.num_of_order_fact_data_to_insert = 50
+        self.num_of_products_to_insert = 20
         self.start_date = datetime(2020, 1, 1)
         self.end_date = datetime(2023, 12, 31)
 
@@ -114,10 +114,83 @@ class Repository:
         self.insert_ordered_dates_to_database(self.start_date, self.end_date)
         self.insert_order_data(num_rows)
         self.update_order_fact_total_amount()
+        self.insert_factless_fact()
+        self.insert_snapshot_fact()
 
     def insert_snapshot_fact(self):
         print(f'Inserting snapshot fact yearly_sales_snapshot fact...')
+        all_branch_id = self.select_box_values("branch_id", "branch")
 
+        snapshot_id = 1
+        for branch_id in all_branch_id:
+            # Query to get total_sales and profit
+            result, query = self.get_total_sales_and_profit_for_snapshot_fact(branch_id)
+            for row in result:
+                # Creating date_id for 31 December of the current year
+                date_id = int(str(row[0]) + "1231")
+                total_sales = row[1]
+                profit = row[2]
+
+                # Inserting into yearly_sales_snapshot table
+                self.execute_query(f"""
+                    INSERT INTO yearly_sales_snapshot (snapshot_id, date_id, branch_id, total_sales, profit)
+                    VALUES ({snapshot_id}, {date_id}, {branch_id}, {total_sales}, {profit});
+                """)
+
+                snapshot_id += 1
+
+    def get_snapshot_query(self):
+        query = """
+                SELECT
+                    yss.snapshot_id,
+                    yss.date_id,
+                    yss.branch_id,
+                    yss.total_sales,
+                    yss.profit,
+                    b.branch_name
+                FROM
+                    yearly_sales_snapshot yss
+                JOIN
+                    branch b ON yss.branch_id = b.branch_id
+                """
+        result = self.execute_query(query)
+        return result,query
+
+    def get_total_sales_and_profit_for_snapshot_fact(self, branch_id):
+        # Query to get total sales and profit for the specified branch and year
+        query = f"""
+            SELECT
+                d.calendar_year,
+                SUM(of.total_amount) AS total_sales,
+                SUM(of.total_amount - (p.cost_price * od.quantity)) AS profit
+            FROM order_fact of
+            JOIN order_details od ON of.order_id = od.order_id
+            JOIN product p ON od.product_id = p.product_id
+            JOIN date_dimension d ON d.date_id = of.date_id
+            WHERE of.branch_id = {branch_id}
+            GROUP BY d.calendar_year;
+        """
+
+        result = self.execute_query(query)
+        return result, query
+
+    def insert_factless_fact(self):
+        print(f'Inserting factless fact promotion fact...')
+        branches = self.select_box_values("branch_id", "branch")
+        try:
+            for i in range(len(branches)):
+                date_id = self.get_random_existing_id('date_dimension', 'date_id')
+
+                query = f"""
+                            INSERT INTO promotion_fact (promotion_id, date_id, branch_id)
+                            VALUES ({i+1}, {date_id}, {branches[i]});
+                        """
+                self.execute_query(query)
+
+            print(f"Successfully inserted rows into the 'promotion_fact' table.\n")
+
+        except Exception as e:
+            print(f"Error inserting promotion data: {str(e)}\n")
 
     def insert_product_dimension(self, num_rows: int):
         print(f'Inserting {num_rows} products to product table...')
@@ -142,6 +215,20 @@ class Repository:
 
         except Exception as e:
             print(f"Error inserting product data: {str(e)}\n")
+
+    def get_promotion_data(self):
+        query = """
+            SELECT
+                pf.promotion_id,
+                pf.date_id,
+                b.branch_name
+            FROM
+                promotion_fact pf
+                JOIN branch b ON b.branch_id = pf.branch_id
+                ;
+        """
+        result = self.execute_query(query)
+        return result, query
 
     def get_product_price(self, product_id):
         query = f"SELECT price FROM product WHERE product_id = {product_id};"
@@ -341,16 +428,15 @@ class Repository:
     # Factless Fact Per Dimension 1 and 2 Repo
     def list_of_customers_who_never_bought_a_product_per_branch(self, product: str, branch: str):
         query = f"""
-            SELECT
-                d.full_date,
-                b.branch_name,
-                c.customer_name
-            FROM
-                date_dimension d
-            CROSS JOIN
-                branch b
-            CROSS JOIN
-                customer c;
+            SELECT b.branch_name, d.full_date, p.product_name
+            FROM branch b
+            CROSS JOIN date_dimension d
+            CROSS JOIN product p
+            LEFT JOIN order_fact o ON b.branch_id = o.branch_id
+                                AND d.date_id = o.date_id
+            LEFT JOIN order_details od ON o.order_id = od.order_id
+                                    AND p.product_id = od.product_id
+            WHERE od.order_detail_id IS NULL;
         """
 
         result = self.execute_query(query)
@@ -369,8 +455,7 @@ class Repository:
             JOIN date_dimension d ON of.date_id = d.date_id
             WHERE p.category = '{category}'
             GROUP BY p.category, d.calendar_year;
-        """
-        
+        """ 
         result = self.execute_query(query)
         return result, query
 
@@ -541,3 +626,4 @@ class Repository:
         self.drop_tables()
         self.create_tables()
         self.insert_dummy_datas(self.num_of_order_fact_data_to_insert)
+

@@ -112,11 +112,11 @@ class GUI:
                 self.show_non_additive_fact_content(title)
 
             elif selected_option == "Factless Fact":
-                title = "List Of Customers Who Never Bought A Product Per Branch"
+                title = "List of Promotions"
                 self.show_factless_fact_content(title)
 
             elif selected_option == "Snapshot Fact":
-                title = ""
+                title = "Total Sales Amount And Profit Per Branch Per Year"
                 self.show_snapshot_fact_content(title)
 
             elif selected_option == "Accumulation Fact":
@@ -128,8 +128,8 @@ class GUI:
                 self.show_date_dimension_content(title)
 
             elif selected_option == "Matrix Bus":
-                title = ""
-                self.show_matrix_bus_content()
+                title = "Matrix Bus"
+                self.show_matrix_bus_content(title)
 
         except AssertionError:
             st.error(f"Cannot Show Sidebar!  \nOptions Length ({options_length}) != Icons Length ({icons_length})")
@@ -239,7 +239,7 @@ class GUI:
         st.image('./images/db_relationship.png', caption='Database Relationship', width=510)
 
     def show_pagination_df(self, service_method):
-        data,query = service_method
+        data, query = service_method
         st.code(query)
         pagination, pages, current_page, height = self.service.paginate_df(data)
         pagination.dataframe(data=pages[current_page - 1], height=height, use_container_width=True, hide_index=True)
@@ -279,31 +279,18 @@ class GUI:
         data, query = self.service.get_average_units_sold_per_transaction_per_branch_per_year(selected_branch)
         self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'average_units_sold_per_transaction','Year','Average Units Sold Per Transaction',query)
 
-    # def show_non_additive_fact_content(self, title:str):
-    #     st.header(title)
-    #     selected_product = st.selectbox("Select Product", self.service.get_selectbox_values("product_name","product"))
-    #     data, query = self.service.get_average_unit_price_per_product_per_year(selected_product)
-    #     self.line_chart_bar_chart_and_table_content(data, 'calendar_year', 'average_unit_price','Year','Average Unit Price',query)
-        
 
     def show_factless_fact_content(self, title: str):
         st.header(title)
-        
-        selected_product = st.selectbox("Select Product", self.service.get_selectbox_values("product_name","product"))
-        selected_branch = st.selectbox("Select Branch", self.service.get_selectbox_values("branch_name","branch"))
-        data, query = self.service.get_factless_fact_data(selected_product, selected_branch)
-        
-        col1, col2 = st.columns([2, 3])
-        with col1:
-            st.code(query)
-        with col2:
-            st.dataframe(data, use_container_width=True, hide_index=True)
-            
-        st.write(data.shape)
+        data, query = self.service.get_factless_fact_data()
+        st.code(query)
+        st.dataframe(data)
 
     def show_snapshot_fact_content(self, title: str):
         st.header(title)
-        st.write("This is the content for Snapshot Fact")
+        data, query = self.service.snapshot_fact_data()
+        st.code(query)
+        st.dataframe(data,hide_index=True,use_container_width=True)
 
     # Victor
     def show_accumulation_fact_content(self, title: str):
@@ -324,4 +311,5 @@ class GUI:
 
     def show_matrix_bus_content(self, title: str):
         st.header(title)
-        st.write("This is the content for Matrix Bus")
+        matrix_bus = self.service.display_matrix_bus()
+        st.write(matrix_bus, unsafe_allow_html=True)

@@ -72,11 +72,20 @@ class Service:
         return df, query
 
     # Factless Fact Service
-    def get_factless_fact_data(self, product, branch):
-        data, query = self.repo.list_of_customers_who_never_bought_a_product_per_branch(product, branch)
-        columns = ["YYYY MM DD", "Branch name", "Customer name"]
+    def get_factless_fact_data(self):
+        data, query = self.repo.get_promotion_data()
+        columns = ["Promotion ID", "Date ID", "Branch Name"]
         df = pd.DataFrame(data, columns=columns)
+        df = df.astype({"Date ID" : "string"})
         # df = pd.DataFrame(data)
+        return df, query
+
+    # Snapshot Fact Service
+    def snapshot_fact_data(self):
+        data, query  = self.repo.get_snapshot_query()
+        columns = ["Snapshot ID", "Date ID", "Branch ID", "Total Sales","Profit","Branch Name"]
+        df = pd.DataFrame(data, columns=columns)
+        df = df.astype({"Date ID" : "string"})
         return df, query
 
     @st.cache_data(show_spinner=False)
@@ -162,3 +171,19 @@ class Service:
 
         return result, df
 
+    def display_matrix_bus(self):
+        column = [""                     ,   "Branch"    ,     "Customer"      , "Product"        , "Date Dimension"   ]
+        data   = [["Quantity (Grain)"    ,   "🟢"        ,     "🟢"            , "🔴"            , "🟢"               ],
+                  ["Total Sales Fact"    ,   "🟢"        ,     "🔴"            , "🟢"            , "🟢"               ],
+                  ["Derived Fact"        ,   "🔴"        ,     "🔴"            , "🟢"            , "🟢"               ],
+                  ["Additive Fact"       ,   "🟢"        ,     "🔴"            , "🟢"            , "🟢"               ],
+                  ["Non-Additive Fact"   ,   "🟢"        ,     "🔴"            , "🔴"            , "🟢"               ],
+                  ["Factless Fact"       ,   "🟢"        ,     "🟢"            , "🔴"            , "🟢"               ],
+                  ["Snapshot Fact"       ,   "🟢"        ,     "🔴"            , "🔴"            , "🟢"               ],
+                  ["Accumulation Fact"   ,   "🔴"        ,     "🟢"            , "🟢"            , "🔴"               ],
+                  ["Date Dimension Table",   "🔴"        ,     "🔴"            , "🔴"            , "🟢"               ]]
+        
+        df = pd.DataFrame(data, columns=column)
+        df = df.style.hide().set_properties(subset=column[1:], **{'text-align': 'center'}).to_html()
+        
+        return df
